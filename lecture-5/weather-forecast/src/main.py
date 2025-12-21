@@ -42,6 +42,19 @@ def weather_icons(text: str):
 
     return icons
 
+def bgcolor_from_weather_code(code: str):
+    if code.startswith("1"):      # 晴系
+        return ft.Colors.LIGHT_BLUE_50
+    elif code.startswith("2"):    # 曇系
+        return ft.Colors.BLUE_GREY_100
+    elif code.startswith("3"):    # 雨系
+        return ft.Colors.INDIGO_100
+    elif code.startswith("4"):    # 雪系
+        return ft.Colors.BLUE_50
+    else:
+        return ft.Colors.GREY_100
+
+
 # 気象コード -> 説明（辞書）
 # 参考：https://qiita.com/nak435/items/7f3588d3f75beb5890fa　
 weatherDescription = {
@@ -224,7 +237,7 @@ def day_card(date_str, weather_text, t_min=None, t_max=None):
 def main(page: ft.Page):
     page.title = "都道府県別 ７日間天気予報アプリ"
     page.padding = 20
-    page.bgcolor = ft.Colors.LIGHT_BLUE_50
+    page.bgcolor = ft.Colors.WHITE
 
     weather_column = ft.Column(spacing=10)
 
@@ -263,12 +276,21 @@ def main(page: ft.Page):
             forecast = requests.get(
                 FORECAST_URL.format(office_code)
             ).json()
+
+            if not forecast or "timeSeries" not in forecast[0]:
+                raise ValueError("この地域の予報は提供されていません")
+
         except Exception:
             weather_column.controls.append(
-                ft.Text("天気データの取得に失敗しました", color=ft.Colors.RED)
+                ft.Text(
+                    "この地域の天気予報は現在取得できません\n"
+                    "（API仕様による制限）",
+                    color=ft.Colors.RED,
+                )
             )
             page.update()
             return
+
 
         office_name = AREA_JSON["offices"][office_code]["name"]
         weather_column.controls.append(
@@ -286,6 +308,9 @@ def main(page: ft.Page):
 
         # 天気コード
         codes = weather_ts["areas"][0]["weatherCodes"]
+        current_code = codes[0]
+
+        page.bgcolor = bgcolor_from_weather_code(current_code)
 
         # 天気コードを日本語に変換
         weathers = [
